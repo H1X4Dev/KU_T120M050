@@ -1,0 +1,17 @@
+﻿<h1>KMI skaičiuoklė</h1>
+
+<form #forma="ngForm" (ngSubmit)="forma.valid && skaiciuoti()">
+  <p>
+    <label for="svoris">Svoris (kg)</label>
+    <input id="svoris" name="svoris" type="number" [(ngModel)]="svoris"
+      (ngModelChange)="kmi = null" min="0.1" step="any" required>
+  </p>
+  <p>
+    <label for="ugis">Ūgis (cm)</label>
+    <input id="ugis" name="ugis" type="number" [(ngModel)]="ugis"
+      (ngModelChange)="kmi = null" min="0.1" step="any" required>
+  </p>
+  <button type="submit" [disabled]="forma.invalid">Skaičiuoti</button>
+</form>
+
+<p>Rezultatas: <output for="svoris ugis" aria-live="polite">{{ kmi | number:'1.2-2' }}</output></p>
