@@ -1,0 +1,88 @@
+﻿<mat-toolbar color="primary">Užrašinė</mat-toolbar>
+
+<main>
+  <mat-card appearance="outlined">
+    <mat-card-header>
+      <mat-icon mat-card-avatar>notes</mat-icon>
+      <mat-card-title role="heading" aria-level="1">Mano užrašai</mat-card-title>
+      <mat-card-subtitle aria-live="polite" aria-atomic="true"
+        >Iš viso: {{ notesService.count() }}</mat-card-subtitle
+      >
+    </mat-card-header>
+    <mat-card-actions>
+      <button mat-flat-button color="primary" type="button" (click)="openNoteDialog(noteDialog)">
+        <mat-icon>add</mat-icon>
+        Naujas užrašas
+      </button>
+    </mat-card-actions>
+    <mat-card-content>
+      <p>Jūsų idėjos ir planai, išsaugoti šioje naršyklėje.</p>
+      @if (notesService.error(); as error) {
+        <p role="alert">{{ error }}</p>
+      }
+
+      @if (notesService.count() === 0) {
+        <p>Užrašų dar nėra. Sukurkite pirmąjį užrašą.</p>
+      } @else {
+        <mat-accordion multi role="list" aria-label="Užrašai">
+          @for (note of notesService.notes(); track note.id) {
+            <mat-expansion-panel expanded role="listitem">
+              <mat-expansion-panel-header>
+                <mat-panel-title>{{ note.title }}</mat-panel-title>
+              </mat-expansion-panel-header>
+              <p>
+                @for (line of note.text.split('\n'); track $index) {
+                  {{ line }}
+                  @if (!$last) {
+                    <br />
+                  }
+                }
+              </p>
+              <mat-action-row>
+                <button
+                  mat-button
+                  color="warn"
+                  type="button"
+                  (click)="notesService.remove(note.id)"
+                  [attr.aria-label]="'Ištrinti užrašą „' + note.title + '“'"
+                >
+                  <mat-icon>delete_outline</mat-icon>
+                  Ištrinti
+                </button>
+              </mat-action-row>
+            </mat-expansion-panel>
+          }
+        </mat-accordion>
+      }
+    </mat-card-content>
+  </mat-card>
+</main>
+
+<ng-template #noteDialog>
+  <h2 mat-dialog-title>Naujas užrašas</h2>
+  <form [formGroup]="form" (ngSubmit)="addNote()">
+    <mat-dialog-content>
+      <p>
+        <mat-form-field appearance="outline">
+          <mat-label>Pavadinimas</mat-label>
+          <input matInput formControlName="title" />
+          <mat-error>Įveskite užrašo pavadinimą.</mat-error>
+        </mat-form-field>
+      </p>
+      <p>
+        <mat-form-field appearance="outline">
+          <mat-label>Tekstas</mat-label>
+          <textarea matInput formControlName="text" rows="5"></textarea>
+          <mat-error>Įveskite užrašo tekstą.</mat-error>
+        </mat-form-field>
+      </p>
+      @if (notesService.error(); as error) {
+        <p role="alert">{{ error }}</p>
+      }
+    </mat-dialog-content>
+    <mat-dialog-actions align="end">
+      <button mat-button type="button" mat-dialog-close>Atšaukti</button>
+      <button mat-flat-button color="primary" type="submit">Pridėti</button>
+    </mat-dialog-actions>
+  </form>
+</ng-template>
