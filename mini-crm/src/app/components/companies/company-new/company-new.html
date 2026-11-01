@@ -1,0 +1,84 @@
+<mat-card appearance="outlined">
+    <mat-card-header>
+      <mat-card-title>Įmonės registracija</mat-card-title>
+      <mat-card-subtitle>Įveskite įmonės ir kontaktinių asmenų duomenis.</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="form" (ngSubmit)="register()">
+        <h2>Įmonės duomenys</h2>
+        <div class="fields">
+          <mat-form-field appearance="outline">
+            <mat-label>Įmonės pavadinimas</mat-label>
+            <input matInput formControlName="companyName" maxlength="30" required />
+            <mat-error>Įveskite įmonės pavadinimą (nuo 2 iki 30 simbolių).</mat-error>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Įmonės kodas</mat-label>
+            <input matInput formControlName="companyCode" inputmode="numeric" />
+            <mat-error>Įmonės kodą gali sudaryti tik skaičiai.</mat-error>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>PVM registracijos kodas</mat-label>
+            <input matInput formControlName="vatCode" />
+            <mat-error>Įveskite skaičius arba LT ir skaičius.</mat-error>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Adresas</mat-label>
+            <input matInput formControlName="address" autocomplete="street-address" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>El. pašto adresas</mat-label>
+            <input matInput formControlName="email" type="email" autocomplete="email" required />
+            <mat-error>Įveskite galiojantį el. pašto adresą.</mat-error>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Telefonas</mat-label>
+            <input matInput formControlName="phone" type="tel" placeholder="+37065312345" />
+            <mat-hint>Su +370, iš viso 10–12 simbolių.</mat-hint>
+            <mat-error>Įveskite numerį su +370 (10–12 simbolių).</mat-error>
+          </mat-form-field>
+        </div>
+
+        <h2>Kontaktai</h2>
+        <div formArrayName="contacts">
+          @for (contact of contacts.controls; track contact; let i = $index) {
+            <section class="contact" [formGroupName]="i">
+              <div class="contact-heading">
+                <h3>Kontaktas {{ i + 1 }}</h3>
+                @if (contacts.length > 1) {
+                  <button mat-button type="button" (click)="removeContact(i)"
+                    [attr.aria-label]="'Pašalinti kontaktą ' + (i + 1)">Pašalinti</button>
+                }
+              </div>
+              <div class="fields">
+                <mat-form-field appearance="outline">
+                  <mat-label>Vardas</mat-label>
+                  <input matInput formControlName="firstName" autocomplete="given-name" required />
+                  <mat-error>Įveskite vardą.</mat-error>
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Pavardė</mat-label>
+                  <input matInput formControlName="lastName" autocomplete="family-name" required />
+                  <mat-error>Įveskite pavardę.</mat-error>
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Pareigos</mat-label>
+                  <input matInput formControlName="position" autocomplete="organization-title" required />
+                  <mat-error>Įveskite pareigas.</mat-error>
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Telefono numeris</mat-label>
+                  <input matInput formControlName="phone" type="tel" required />
+                  <mat-error>Įveskite telefono numerį.</mat-error>
+                </mat-form-field>
+              </div>
+            </section>
+          }
+        </div>
+
+        <button mat-stroked-button type="button" (click)="addContact()">Pridėti kontaktą</button>
+        <button mat-flat-button color="primary" type="submit">Registruotis</button>
+      </form>
+    </mat-card-content>
+</mat-card>

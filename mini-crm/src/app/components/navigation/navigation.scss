@@ -1,0 +1,12 @@
+mat-toolbar {
+  gap: 16px;
+}
+
+nav {
+  display: flex;
+  gap: 4px;
+}
+
+.active {
+  text-decoration: underline;
+}
