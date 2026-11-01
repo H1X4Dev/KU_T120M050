@@ -32,8 +32,8 @@ export class App {
 
   protected readonly notesService = inject(NotesService);
   protected readonly form = inject(NonNullableFormBuilder).group({
-    title: ['', [Validators.required, Validators.pattern(/\S/)]],
-    text: ['', [Validators.required, Validators.pattern(/\S/)]],
+    title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(200)]],
+    text: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(20000)]],
   });
 
   protected openNoteDialog(template: TemplateRef<unknown>): void {
@@ -41,15 +41,29 @@ export class App {
     this.dialogRef = this.dialog.open(template);
   }
 
-  protected addNote(): void {
+  protected async addNote(): Promise<void> {
+    if (this.notesService.saving()) {
+      return;
+    }
+
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
 
     const { title, text } = this.form.getRawValue();
-    if (this.notesService.add(title, text)) {
-      this.dialogRef?.close();
+    const dialogRef = this.dialogRef;
+    if (dialogRef) {
+      dialogRef.disableClose = true;
+    }
+    try {
+      if (await this.notesService.add(title, text)) {
+        dialogRef?.close();
+      }
+    } finally {
+      if (dialogRef) {
+        dialogRef.disableClose = false;
+      }
     }
   }
 }

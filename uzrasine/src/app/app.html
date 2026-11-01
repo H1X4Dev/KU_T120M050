@@ -10,18 +10,31 @@
       >
     </mat-card-header>
     <mat-card-actions>
-      <button mat-flat-button color="primary" type="button" (click)="openNoteDialog(noteDialog)">
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        (click)="openNoteDialog(noteDialog)"
+        [disabled]="!notesService.ready()"
+      >
         <mat-icon>add</mat-icon>
         Naujas užrašas
       </button>
     </mat-card-actions>
     <mat-card-content>
-      <p>Jūsų idėjos ir planai, išsaugoti šioje naršyklėje.</p>
+      <p>Užrašai saugomi debesyje ir susieti su šia naršykle.</p>
       @if (notesService.error(); as error) {
         <p role="alert">{{ error }}</p>
+        @if (!notesService.ready() && !notesService.loading()) {
+          <button mat-button type="button" (click)="notesService.connect()">
+            Bandyti dar kartą
+          </button>
+        }
       }
 
-      @if (notesService.count() === 0) {
+      @if (notesService.loading()) {
+        <p role="status">Įkeliami užrašai…</p>
+      } @else if (notesService.ready() && notesService.count() === 0) {
         <p>Užrašų dar nėra. Sukurkite pirmąjį užrašą.</p>
       } @else {
         <mat-accordion multi role="list" aria-label="Užrašai">
@@ -44,10 +57,11 @@
                   color="warn"
                   type="button"
                   (click)="notesService.remove(note.id)"
+                  [disabled]="!notesService.ready() || notesService.deleting().includes(note.id)"
                   [attr.aria-label]="'Ištrinti užrašą „' + note.title + '“'"
                 >
                   <mat-icon>delete_outline</mat-icon>
-                  Ištrinti
+                  {{ notesService.deleting().includes(note.id) ? 'Trinama…' : 'Ištrinti' }}
                 </button>
               </mat-action-row>
             </mat-expansion-panel>
@@ -65,15 +79,26 @@
       <p>
         <mat-form-field appearance="outline">
           <mat-label>Pavadinimas</mat-label>
-          <input matInput formControlName="title" />
-          <mat-error>Įveskite užrašo pavadinimą.</mat-error>
+          <input
+            matInput
+            formControlName="title"
+            maxlength="200"
+            [readonly]="notesService.saving()"
+          />
+          <mat-error>Įveskite pavadinimą (iki 200 simbolių).</mat-error>
         </mat-form-field>
       </p>
       <p>
         <mat-form-field appearance="outline">
           <mat-label>Tekstas</mat-label>
-          <textarea matInput formControlName="text" rows="5"></textarea>
-          <mat-error>Įveskite užrašo tekstą.</mat-error>
+          <textarea
+            matInput
+            formControlName="text"
+            rows="5"
+            maxlength="20000"
+            [readonly]="notesService.saving()"
+          ></textarea>
+          <mat-error>Įveskite tekstą (iki 20 000 simbolių).</mat-error>
         </mat-form-field>
       </p>
       @if (notesService.error(); as error) {
@@ -81,8 +106,17 @@
       }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-button type="button" mat-dialog-close>Atšaukti</button>
-      <button mat-flat-button color="primary" type="submit">Pridėti</button>
+      <button mat-button type="button" mat-dialog-close [disabled]="notesService.saving()">
+        Atšaukti
+      </button>
+      <button
+        mat-flat-button
+        color="primary"
+        type="submit"
+        [disabled]="notesService.saving() || !notesService.ready()"
+      >
+        {{ notesService.saving() ? 'Saugoma…' : 'Pridėti' }}
+      </button>
     </mat-dialog-actions>
   </form>
 </ng-template>

@@ -1,84 +1,116 @@
-import { computed, Injectable, signal } from '@angular/core';
+import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 
-interface Note {
+export interface Note {
   readonly id: string;
   readonly title: string;
   readonly text: string;
 }
 
-const STORAGE_KEY = 'uzrasine.notes';
-
 @Injectable({ providedIn: 'root' })
 export class NotesService {
+  private readonly destroyRef = inject(DestroyRef);
+  private connection?: Awaited<ReturnType<typeof import('./notes.firebase').connectNotes>>;
+  private unsubscribe?: () => void;
+  private readonly notesState = signal<readonly Note[]>([]);
   private readonly errorState = signal<string | null>(null);
-  private readonly notesState = signal<readonly Note[]>(this.load());
+  private readonly loadingState = signal(false);
+  private readonly readyState = signal(false);
+  private readonly savingState = signal(false);
+  private readonly deletingState = signal<readonly string[]>([]);
 
   readonly notes = this.notesState.asReadonly();
   readonly error = this.errorState.asReadonly();
+  readonly loading = this.loadingState.asReadonly();
+  readonly ready = this.readyState.asReadonly();
+  readonly saving = this.savingState.asReadonly();
+  readonly deleting = this.deletingState.asReadonly();
   readonly count = computed(() => this.notes().length);
 
-  add(title: string, text: string): boolean {
+  constructor() {
+    void this.connect();
+    this.destroyRef.onDestroy(() => this.unsubscribe?.());
+  }
+
+  async connect(): Promise<void> {
+    if (this.loading()) {
+      return;
+    }
+
+    this.unsubscribe?.();
+    this.loadingState.set(true);
+    this.readyState.set(false);
+    this.errorState.set(null);
+
+    try {
+      const { connectNotes } = await import('./notes.firebase');
+      this.connection = await connectNotes();
+      if (this.destroyRef.destroyed) {
+        return;
+      }
+
+      this.unsubscribe = this.connection.listen(
+        (notes) => {
+          this.notesState.set(notes);
+          this.loadingState.set(false);
+          this.readyState.set(true);
+        },
+        (error) => this.connectionFailed(error),
+      );
+    } catch (error) {
+      this.connectionFailed(error);
+    }
+  }
+
+  async add(title: string, text: string): Promise<boolean> {
     title = title.trim();
     text = text.trim();
-
-    if (!title || !text) {
+    if (
+      !title ||
+      !text ||
+      title.length > 200 ||
+      text.length > 20000 ||
+      !this.ready() ||
+      !this.connection ||
+      this.saving()
+    ) {
       return false;
     }
 
-    const note: Note = { id: crypto.randomUUID(), title, text };
-    return this.save([note, ...this.notes()]);
-  }
-
-  remove(id: string): void {
-    this.save(this.notes().filter((note) => note.id !== id));
-  }
-
-  private save(notes: readonly Note[]): boolean {
+    this.savingState.set(true);
+    this.errorState.set(null);
     try {
-      // Update the UI only after storage succeeds, so a failed save keeps the draft.
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
-      this.notesState.set(notes);
-      this.errorState.set(null);
+      await this.connection.add(title, text);
       return true;
     } catch {
-      this.errorState.set(
-        'Nepavyko išsaugoti pakeitimų. Naršyklės atmintis pilna arba nepasiekiama. Bandykite dar kartą.',
-      );
+      this.errorState.set('Nepavyko išsaugoti užrašo. Bandykite dar kartą.');
       return false;
+    } finally {
+      this.savingState.set(false);
     }
   }
 
-  private load(): readonly Note[] {
+  async remove(id: string): Promise<void> {
+    if (!this.ready() || !this.connection || this.deleting().includes(id)) {
+      return;
+    }
+
+    this.deletingState.update((ids) => [...ids, id]);
+    this.errorState.set(null);
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === null) {
-        return [];
-      }
-
-      const notes: unknown = JSON.parse(stored);
-      if (
-        !Array.isArray(notes) ||
-        !notes.every(isNote) ||
-        new Set(notes.map((note) => note.id)).size !== notes.length
-      ) {
-        throw new Error('Invalid stored notes');
-      }
-
-      return notes;
+      await this.connection.remove(id);
     } catch {
-      this.errorState.set('Nepavyko įkelti užrašų iš naršyklės atminties.');
-      return [];
+      this.errorState.set('Nepavyko ištrinti užrašo. Bandykite dar kartą.');
+    } finally {
+      this.deletingState.update((ids) => ids.filter((pendingId) => pendingId !== id));
     }
   }
-}
 
-function isNote(value: unknown): value is Note {
-  if (typeof value !== 'object' || value === null) {
-    return false;
+  private connectionFailed(error: unknown): void {
+    console.error('Firebase notes connection failed:', error);
+    this.loadingState.set(false);
+    this.readyState.set(false);
+    this.errorState.set(
+      'Nepavyko prisijungti prie užrašų saugyklos. Patikrinkite interneto ryšį ir bandykite dar kartą.',
+    );
   }
-
-  const note = value as Record<string, unknown>;
-  return ['id', 'title', 'text'].every(
-    (key) => typeof note[key] === 'string' && note[key].trim().length > 0,
-  );
 }
